@@ -1,5 +1,4 @@
 # VML - Virtual Machine Language
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/axolotlc/vml)
 ![GitHub all releases](https://img.shields.io/github/downloads/axolotlc/vml/total)
 ![GitHub repo size](https://img.shields.io/github/repo-size/axolotlc/vml)
 
