@@ -61,3 +61,30 @@ Anyways, a list of operations can be found below:
 | not | Pops the top value off of the stack and performs a bitwise not (negation). The result is then pushed onto the stack.
 
 ## Variables
+
+### About:
+There are two types of constants in VML - `memory` constants and `let` bound constants. A `memory` constant is just a value which indicates a position in memory allocated to the constant. The value of a memory constant is dictated to by the constants that are preceeding it. For example, if I had constant A which required 8 bytes of memory, and another constant I had just declared which required 4 bytes of memory, that constant would be given index 8 into memory, as the first 8 bytes are allocated to the first constant (if that makes sense anyway!).
+
+`let` bindings are slightly different. They are your run-of-the-mill constants which simply contain a value which you assign to them. They can either contain a string literal, or an unsigned integer. They can also contain characters, but they are effectively syntactic sugar for unsigned integers.
+
+### Declaration:
+
+To declare a `memory` constant, use the following:
+```
+memory <size in bytes> const <variable name>
+```
+In order to declare a let-bound constant, use the following:
+```
+let <value> const <variable name>
+```
+
+### Naming convention:
+
+Unlike many other programming languages, the naming convention is quite loose in VML, however there are some rules:
+
+Variable names may not:
+
+- Begin with a number
+- Begin with a `$`
+- Contain any keyword within their name (Eg. `method_1` would be illegal.)
+
