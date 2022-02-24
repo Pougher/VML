@@ -1,0 +1,89 @@
+=== THE VM ===
+
+> An instruction listing can be found at the bottom of this file.
+
+This is a programming language written in RUST which runs on a virtual machine.
+I have chosen RUST as in many cases it can be as fast if not faster than C.
+
+This VM uses a custom assembly language known as VML, and an instruction listing
+can be found below:
+
+(NOTE: The notation is as follows: (REGISTER_OPERANDS, INSTRUCTION_ID, [64bit])
+
++---------- Section I - Load and store ----------+
+|0x00: MOV Rx, IMM64                             |
+|0x01: LDR Rx, MEM(64)                           |
+|xx02: INDL Rx, MEM(64) + Rx                     |
+|xx03: CPY Rx, Rx                                |
+|0x04: STR Rx, MEM(64)                           |
+|xx05: INDS Rx, MEM(64) + Rx                     |
+|0x06: PUSH Rx                                   |
+|0x07: POP Rx                                    |
+|0x23: ADR Rx, MEM(32)                           |
+|xx24: LEI Rx, Rx                                |
+|xx25: LST Rx, Rx                                |
+|xx26: LTT Rx, Rx                                |
+|xx27: LSF Rx, Rx                                |
+|xx28: SEI Rx, Rx                                |
+|xx29: SST Rx, Rx                                |
+|xx2A: STT Rx, Rx                                |
+|xx2B: SSF Rx, Rx                                |
+|0x2C: BUFC Rx, Rx, ROM(32)                      |
+|0x2D: BSEQ Rx, MEM(32)                          |
+|0x2E: LSEQ Rx, ROM(32)                          |
++------------------------------------------------+
+
++---------- Section II - Arithmetic ----------+  
+|xx08: IADD Rx, Rx                            |
+|xx09: ISUB Rx, Rx                            |
+|xx0A: IMUL Rx, Rx                            |
+|xx0B: IDIV Rx, Rx                            |
+|xx0C: DADD Rx, Rx                            |
+|xx0D: DSUB Rx, Rx                            |
+|xx0E: DMUL Rx, Rx                            |
+|xx0F: DDIV Rx, Rx                            |
+|0x10: ICST Rx                                |
+|0x11: DCST Rx                                |
+|xx12: SHL Rx, Rx                             |
+|xx13: SHR Rx, Rx                             |
+|xx14: AND Rx, Rx                             |
+|xx15: OR Rx, Rx                              |
+|0x16: NEG Rx                                 |
+|xx17: ICMP Rx, Rx                            |
+|xx18: DCMP Rx, Rx                            |
++---------------------------------------------+
+
++---------- Section III - Jump ----------+
+|0019: JMP IMM64                         |
+|001A: BEQ IMM64                         |
+|001B: BNE IMM64                         |
+|001C: BGT IMM64                         |
+|001D: BLT IMM64                         |
+|001E: JSR IMM64                         |
+|001F: RET                               |
++----------------------------------------+
+
+(NOTE: `EXTERN` is used to call RUST to do an external call, for
+example, if the program wants the time, then it will call `EXTERNO`
+[extern output] with the memory address for the stored data at
+the second IMM64. Any operands must be registers pushed onto the
+stack before the call.)
+
++---------- Section IV - Miscellaneous ----------+
+|0020: SYS IMM64                                 |
+|0021: EXTERNI IMM64, IMM64                      |
+|0022: HALT                                      |
++------------------------------------------------+
+
+=== Flags register ===
+The flags register (FL) is a register dedicated to processor flags, which are
+organised into one 8-bit byte. The flags are in the following order:
+
+HL GT LT NC NC ZE NC NC
+ 0  0  0  0  0  0  0  0
+
+HL -> Halt
+GT -> Greater than
+LT -> Less than
+ZE -> Zero
+NC -> No connection
