@@ -1,2 +1,2 @@
 # VML - Virtual Machine Language
-<img src="./res/svg_0.svg" width=50% height=50%>
+<img src="./res/svg_0.svg" width=120% height=120%>
