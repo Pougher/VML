@@ -10,6 +10,20 @@ Simplistic syntax, complicated programs.
 </p>
 
 ---
+
+## Usage
+
+Compiling a VML program is simple! Simply run `vml -c <filename>.vml`. This will create a file called `out.bin` which can then be run with the `-r` flag on `vml`. Furthermore (as stated in the Miscellaneous section), you can compile assembly to run on the virtual machine with `vml -a <file>.s`.
+
+## Compilation
+
+Since this is a simple cargo project (make sure you have `rustc` and `cargo` installed), follow these steps:
+
+1) `cd` into the correct directory (the root of your VML folder)
+2) run `cargo build --release` (This builds the program)
+3) add `alias vml=/path/to/target/release/vml` to your .bashrc or .zshrc
+4) Test the installation by running `vml` in a new terminal. If you get an error, well done! You can now begin programming!
+
 ## Basic syntax
 
 While creating this language, I wanted to focus on simplistic syntax and it really shows! Only 17 keywords! I've also put some effort into them being easy to use, as VML shares
@@ -88,3 +102,32 @@ Variable names may not:
 - Begin with a `$`
 - Contain any keyword within their name (Eg. `method_1` would be illegal.)
 
+## Methods
+
+### About:
+
+Methods are VML's version of subroutines. To call a method, use `$` and then the method name. Methods also follow the default naming convention.
+
+### Decleration:
+
+A method may be declared by doing the following:
+
+```
+method <method name> {
+    ...
+}
+
+// Somewhere else in the program
+
+    ...
+    $<method name>
+    ...
+```
+
+## Miscellaneous
+
+> Please note - there are no includes in VML as of now, and so your projects can only contain one file. VML also requires an installation of rust to compile.
+
+Also, for those of you who like your low-level assembly programming, you can assemble files with the `-a` flag which will produce a single bin file which can be run with `-r <file>.bin`. For an instruction set reference, please use `spec.txt`.
+
+As of now the language is still incomplete, and will recieve updates in the near future. Expect more!
