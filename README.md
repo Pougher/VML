@@ -11,6 +11,16 @@ Simplistic syntax, complicated programs.
 
 ---
 
+## Contents
+- [Usage](#usage)
+- [Compilation](#compilation)
+- [Basic Syntax](#basic-syntax)
+- [Arithmetic](#arithmetic)
+- [Variables](#variables)
+- [Methods](#methods)
+- [Buffers](#buffers)
+- [Miscellaneous](#miscellaneous)
+
 ## Usage
 
 Compiling a VML program is simple! Simply run `vml -c <filename>.vml`. This will create a file called `out.bin` which can then be run with the `-r` flag on `vml`. Furthermore (as stated in the Miscellaneous section), you can compile assembly to run on the virtual machine with `vml -a <file>.s`.
@@ -123,6 +133,32 @@ method <method name> {
     $<method name>
     ...
 ```
+
+## Buffers
+
+As noted in the Variables section, you can create memory variables. To give these any use whatsoever, you must read and write to them. You can do this with the following:
+
+| Command | Operation |
+| ------- | --------- |
+| `!64`   | Pops the top value off of the stack and stores it as a 64 bit unsigned integer into the memory offset which is popped off secondly.
+| `!32`   | Pops the top value off of the stack and stores it as a 32 bit unsigned integer into the memory offset which is popped off secondly.
+| `!16`   | Pops the top value off of the stack and stores it as a 16 bit unsigned integer into the memory offset which is popped off secondly.
+| `!8 `   | Pops the top value off of the stack and stores it as an 8 bit unsigned integer into the memory offset which is popped off secondly.
+| `@64`   | Pops the top value off of the stack and treats it as a memory offset. It then loads a 64-bit value from that offset.
+| `@32`   | Pops the top value off of the stack and treats it as a memory offset. It then loads a 32-bit value from that offset.
+| `@16`   | Pops the top value off of the stack and treats it as a memory offset. It then loads a 16-bit value from that offset.
+| `@8`   | Pops the top value off of the stack and treats it as a memory offset. It then loads an 8-bit value from that offset.
+
+As an example, this is a program to store the number `69` into the memory location pointed to by `buffer`:
+
+```
+memory 1 const buffer // assign a memory offset to buffer with the size of 1 byte.
+
+method main {
+    buffer 69 !8 // write 69 as an 8-bit value to the memory offset pointed to by buffer.
+}
+```
+> Please note: Buffers have no overflow checking, and so writing a 32-bit value to a 1-byte-large buffer will succeed with no error, and overwrite any subsequent memory beyond the allocated limit.
 
 ## Miscellaneous
 
