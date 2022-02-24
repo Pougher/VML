@@ -44,3 +44,20 @@ With all that out of the way, here are all of the keywords as well as their oper
 | `let` | 0 | Declares a non-memory variable which can be referenced throughout the program. Eg. `let "Hi" const hi_var`. Variables can be referenced anywhere throughout the program with just their name identifier (Eg. `hi_var print`).
 | `input` | 1 | Fills a buffer supplied beforehand with a read line of input from the user. Usage: `buffer input` ---> `buffer = "I'm a line of input!"`
 | `copy` | 2 | Fills the first operand (as an entry into memory) with a string literal supplied by the second element down in the stack. Eg: `"Hello" buffer copy` ---> `buffer = "Hello"`
+
+## Arithmetic
+
+As I said previously, I wanted to focus on simplicity, and therefore you might notice that `shift-left` and `shift-right` are missing! Well, thats because you can accomplish the same thing by dividing and multiplying by two. Don't believe me? Check!
+
+Anyways, a list of operations can be found below:
+| Operation | Description |
+| --------- | ----------- |
+| + | Pops the first two values off of the stack, and adds them. The result is pushed onto the stack. |
+| - | Pops the first two values off of the stack, and subtracts them. The result is pushed onto the stack. Ordering: `a b -` ---> `a - b`|
+| * | Pops the first two values off of the stack, and multiplies them. The result is pushed onto the stack. |
+| / |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b /` ---> `a / b`|
+| and |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b and` ---> `a and b`|
+| or |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b or` ---> `a or b`|
+| not | Pops the top value off of the stack and performs a bitwise not (negation). The result is then pushed onto the stack.
+
+## Variables

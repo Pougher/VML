@@ -700,6 +700,23 @@ impl Lexer {
                 },
                 TokenType::INSTRUCTION => {
                     match &*self.tokens[index].data {
+                        "and" => {
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tand\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "or" => {
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tor\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "not" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tneg\tr0\n";
+                            output += "\t\tpush\tr0\n";
+                        },
                         "uprint" => {
                             output += "\t\tsys \t0x00\n";
                         },
