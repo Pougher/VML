@@ -12,6 +12,18 @@ Simplistic syntax, complicated programs.
 ---
 ## Basic syntax
 
+While creating this language, I wanted to focus on simplistic syntax and it really shows! Only 17 keywords! I've also put some effort into them being easy to use, as VML shares
+many features with commonly used languages such as curly braced scopes. You may also notice a lack of a `for` loop, and that is because we simply don't need one! We can create a loop
+which ranges from 0 to 20 by doing the following:
+
+```
+0 while dup 21 < {
+    1 +
+}
+```
+
+With all that out of the way, here are all of the keywords as well as their operations:
+
 
 | Keyword | Stack Operands | Operation |
 | ------- | -------------- | --------- |
