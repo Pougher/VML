@@ -104,7 +104,7 @@ Anyways, a list of operations can be found below:
 | `/` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b /` ---> `a / b`|
 | `and` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b and` ---> `a and b`|
 | `or` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b or` ---> `a or b`|
-| not | Pops the top value off of the stack and performs a bitwise not (negation). The result is then pushed onto the stack.
+| `not` | Pops the top value off of the stack and performs a bitwise not (negation). The result is then pushed onto the stack.
 | `d+` | Pops the first two values off of the stack, and performs a floating point addition on them. The result is pushed onto the stack. |
 | `d-` | Pops the first two values off of the stack, and performs a floating point subtraction on them. The result is pushed onto the stack. Ordering: `a b -` ---> `a - b`|
 | `d*` | Pops the first two values off of the stack, and performs a floating point multiplication on them. The result is pushed onto the stack. |
