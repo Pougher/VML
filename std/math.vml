@@ -1,0 +1,17 @@
+let 2.71828 const EULER
+let 3.14159 const PI
+
+method imod {
+    dup rot dup rot /
+    rot * -
+}
+
+method EuclidDistance_2D {
+    rot rot d- rot swap d-
+    2.0 swap pow swap 2.0 swap pow
+    d+ 2.0 swap root
+}
+
+method negative {
+    0 swap 2 * -
+}

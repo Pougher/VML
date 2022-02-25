@@ -1,5 +1,6 @@
 use std::process;
 use crate::errors::*;
+use crate::util::*;
 
 // ascii table for quick string building
 
@@ -12,12 +13,6 @@ pub struct VMLCpu {
     stack: Vec<u64>,
     pc: usize,
     flags: u8
-}
-
-#[repr(C)]
-union Conversion_union {
-    x: f64,
-    y: u64
 }
 
 impl VMLCpu {
@@ -70,18 +65,6 @@ impl VMLCpu {
             ind += 1;
         }
         return ret;
-    }
-
-    pub fn to_f64(self: &VMLCpu, val: u64) -> f64 {
-        let conv: Conversion_union = Conversion_union { y: val };
-        let r: f64 = unsafe { conv.x };
-        return r;
-    }
-    
-    pub fn to_u64(self: &VMLCpu, val: f64) -> u64 {
-        let conv: Conversion_union = Conversion_union { x: val };
-        let r: u64 = unsafe { conv.y };
-        return r;
     }
 
     pub fn exec(self: &mut VMLCpu, rom: &Vec<u8>, code_len: &usize) {
@@ -146,22 +129,22 @@ impl VMLCpu {
                         ((args & 0xF0) >> 4) as usize];
                 },
                 0x0C => {
-                    self.registers[(args & 0x0F) as usize] = self.to_u64(self.to_f64(self.registers[(args & 0x0F) as usize]) + self.to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
+                    self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]) + to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
                 },
                 0x0D => {
-                    self.registers[(args & 0x0F) as usize] = self.to_u64(self.to_f64(self.registers[(args & 0x0F) as usize]) - self.to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
+                    self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]) - to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
                 },
                 0x0E => {
-                    self.registers[(args & 0x0F) as usize] = self.to_u64(self.to_f64(self.registers[(args & 0x0F) as usize]) * self.to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
+                    self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]) * to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
                 },
                 0x0F => {
-                    self.registers[(args & 0x0F) as usize] = self.to_u64(self.to_f64(self.registers[(args & 0x0F) as usize]) / self.to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
+                    self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]) / to_f64(self.registers[((args & 0xF0) >> 4) as usize]));
                 },
                 0x10 => {
-                    self.registers[(args & 0x0F) as usize] = self.to_u64(self.to_f64(self.registers[(args & 0x0F) as usize]));
+                    self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]));
                 },
                 0x11 => {
-                    self.registers[(args & 0x0F) as usize] = self.to_f64(self.registers[(args & 0x0F) as usize]) as u64;
+                    self.registers[(args & 0x0F) as usize] = to_f64(self.registers[(args & 0x0F) as usize]) as u64;
                 },
                 0x12 => {
                     self.registers[(args & 0x0F) as usize] = self.registers[(args & 0x0F) as usize] << self.registers[((args & 0xF0) >> 4) as usize];
@@ -190,8 +173,8 @@ impl VMLCpu {
                 0x18 => {
                     self.flags = 0;
 
-                    let reg1_c: f64 = self.to_f64(self.registers[(args & 0x0F) as usize]);
-                    let reg2_c: f64 = self.to_f64(self.registers[((args & 0xF0) >> 4) as usize]);
+                    let reg1_c: f64 = to_f64(self.registers[(args & 0x0F) as usize]);
+                    let reg2_c: f64 = to_f64(self.registers[((args & 0xF0) >> 4) as usize]);
                     if reg1_c == reg2_c { self.flags = self.flags | 0b00000100; }
                     if reg1_c > reg2_c  { self.flags = self.flags | 0b01000000; }
                     if reg1_c < reg2_c  { self.flags = self.flags | 0b00100000; }
@@ -263,6 +246,8 @@ impl VMLCpu {
                             }
                             self.memory[buffer + input.len()] = 0x00;
                         },
+                        0x06 => print!("{}", to_f64(self.stack.pop().unwrap())),
+                        0x07 => print!("{}", self.stack.pop().unwrap() as i64),
                         _    => {
                             format_errora("Error - unrecognized SYSCALL. Perhaps you're missing an extension?".to_string());
                             process::exit(1);
@@ -344,6 +329,16 @@ impl VMLCpu {
                     if self.read_NTString(loc, rom) == self.read_NTString(mloc, rom) {
                         self.flags = self.flags | 0b00000100;
                     }
+                }
+                0x2F => {
+                    let op1 = to_f64(self.registers[(args & 0x0F) as usize]);
+                    let op2 = to_f64(self.registers[((args & 0xF0) >> 4) as usize]);
+                    self.registers[(args & 0x0F) as usize] = to_u64(op1.powf(op2));
+                }
+                0x30 => {
+                    let op1 = to_f64(self.registers[(args & 0x0F) as usize]);
+                    let op2 = to_f64(self.registers[((args & 0xF0) >> 4) as usize]);
+                    self.registers[(args & 0x0F) as usize] = to_u64(op1.powf(1.0 / op2));
                 }
                 _ => eprintln!("Unrecognized opcode at {:#018x} (ERR)", self.pc)
             }

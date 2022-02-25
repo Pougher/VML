@@ -3,7 +3,7 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/axolotlc/vml/total)
 ![GitHub repo size](https://img.shields.io/github/repo-size/axolotlc/vml)
 
-Simplistic syntax, complicated programs.
+Not an esoteric programming language, just a bizzare one.
 
 <p align="center">
     <img src="https://github.com/AxolotlC/VML/blob/main/res/image_0.png" align="center">
@@ -19,6 +19,9 @@ Simplistic syntax, complicated programs.
 - [Variables](#variables)
 - [Methods](#methods)
 - [Buffers](#buffers)
+- [Doubles](#doubles)
+- [Boolean Operators](#boolean-operators)
+- [Includes](#includes)
 - [Miscellaneous](#miscellaneous)
 
 ## Usage
@@ -36,7 +39,7 @@ Since this is a simple cargo project (make sure you have `rustc` and `cargo` ins
 
 ## Basic syntax
 
-While creating this language, I wanted to focus on simplistic syntax and it really shows! Only 17 keywords! I've also put some effort into them being easy to use, as VML shares
+While creating this language, I wanted to focus on simplistic syntax and it really shows! I've also put some effort into them being easy to use, as VML shares
 many features with commonly used languages such as curly braced scopes. You may also notice a lack of a `for` loop, and that is because we simply don't need one! We can create a loop
 which ranges from 0 to 20 by doing the following:
 
@@ -59,6 +62,14 @@ With all that out of the way, here are all of the keywords as well as their oper
 | `hprint` | 1 | Prints the value on top of the stack (formatted as a hexadecimal integer) to the standard output. The value must be an **unsigned 64-bit integer**. Otherwise, undefined behaviour may occur.
 | `fprint` | 1 | Prints the value on top of the stack (formatted as a binary integer) to the standard output. The value must be an **unsigned 64-bit integer**. Otherwise, undefined behaviour may occur.
 | `bprint` | 1 | Prints the **string literal** contained within a **memory buffer** to the standard output (must be null-terminated).
+| `iprint` | 1 | Pops a **signed 64-bit integer** from the top of the stack and outputs it to the terminal.
+| `dprint` | 1 | Pops a **64-bit Floating point number** from the top of the stack and outputs it to the terminal.
+| `return` | 0 | Returns from the current method. If used in the `main` method, the program exits.
+| `(float)` | 1 | Casts the top value on the stack as a **64-bit float**
+| `(uint)` | 1 | Casts the top value on the stack as a **64-bit unsigned integer**
+| `pow` | 2 | Pops the top two **64-bit floating point numbers** from the stack and performs an exponentiation. The result is then pushed back onto the stack.
+| `root` | 2 | Pops the top two **64-bit floating point numbers** from the stack and performs an nth-root on them. The result is then pushed back onto the stack.
+| `include` | 1 | Includes a file. If the file doesn't exist, then the compiler will crash.
 | `dup` | 1 | Duplicates the value on top of the stack. Eg. `2 dup` ---> `2 2`
 | `swap` | 2 | Swaps the top two values on the stack around, such that `a b swap` ---> `b a`
 | `rot` | 3 | Rotates the top three elements on the stack, such that ` a b c rot` ---> `c a b`
@@ -69,6 +80,17 @@ With all that out of the way, here are all of the keywords as well as their oper
 | `input` | 1 | Fills a buffer supplied beforehand with a read line of input from the user. Usage: `buffer input` ---> `buffer = "I'm a line of input!"`
 | `copy` | 2 | Fills the first operand (as an entry into memory) with a string literal supplied by the second element down in the stack. Eg: `"Hello" buffer copy` ---> `buffer = "Hello"`
 
+## Includes
+
+It would be a nightmare working with a file that has over 10,000 lines and absolutely no categorisation, and so I present includes! Fresh in version 1.0.3rev1! With includes, you can have multiple files for projects, making your code more concise and organized.
+
+Here is a quick tutorial on how to use includes:
+
+Say we had a file called `helpful_stuff.vml` which contained the method `read_user_input`. If we wanted to access this from a different file, we can simply add `include "helpful_stuff.vml"` to the top of the file. This will automatically stitch all of the dependencies and methods from `helpful_stuff.vml` into your file!
+
+#### With great power comes great responsibility (READ THIS):
+As of 1.0.3rev1, includes are experimental and may be buggy, so use them at your own risk. You may also want to avoid something known as "circular includes" where your file includes itself or another file includes it, resulting in a loop. This could duplicate some of your code, resulting in extremely difficult-to-find bugs.
+
 ## Arithmetic
 
 As I said previously, I wanted to focus on simplicity, and therefore you might notice that `shift-left` and `shift-right` are missing! Well, thats because you can accomplish the same thing by dividing and multiplying by two. Don't believe me? Check!
@@ -76,20 +98,24 @@ As I said previously, I wanted to focus on simplicity, and therefore you might n
 Anyways, a list of operations can be found below:
 | Operation | Description |
 | --------- | ----------- |
-| + | Pops the first two values off of the stack, and adds them. The result is pushed onto the stack. |
+| `+` | Pops the first two values off of the stack, and adds them. The result is pushed onto the stack. |
 | - | Pops the first two values off of the stack, and subtracts them. The result is pushed onto the stack. Ordering: `a b -` ---> `a - b`|
-| * | Pops the first two values off of the stack, and multiplies them. The result is pushed onto the stack. |
-| / |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b /` ---> `a / b`|
-| and |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b and` ---> `a and b`|
-| or |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b or` ---> `a or b`|
+| `*` | Pops the first two values off of the stack, and multiplies them. The result is pushed onto the stack. |
+| `/` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b /` ---> `a / b`|
+| `and` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b and` ---> `a and b`|
+| `or` |  Pops the first two values off of the stack, and divides them. The result is pushed onto the stack.  Ordering: `a b or` ---> `a or b`|
 | not | Pops the top value off of the stack and performs a bitwise not (negation). The result is then pushed onto the stack.
+| `d+` | Pops the first two values off of the stack, and performs a floating point addition on them. The result is pushed onto the stack. |
+| `d-` | Pops the first two values off of the stack, and performs a floating point subtraction on them. The result is pushed onto the stack. Ordering: `a b -` ---> `a - b`|
+| `d*` | Pops the first two values off of the stack, and performs a floating point multiplication on them. The result is pushed onto the stack. |
+| `d/` |  Pops the first two values off of the stack, and performs a floating point division on them. The result is pushed onto the stack.  Ordering: `a b /` ---> `a / b`|
 
 ## Variables
 
 ### About:
 There are two types of constants in VML - `memory` constants and `let` bound constants. A `memory` constant is just a value which indicates a position in memory allocated to the constant. The value of a memory constant is dictated to by the constants that are preceeding it. For example, if I had constant A which required 8 bytes of memory, and another constant I had just declared which required 4 bytes of memory, that constant would be given index 8 into memory, as the first 8 bytes are allocated to the first constant (if that makes sense anyway!).
 
-`let` bindings are slightly different. They are your run-of-the-mill constants which simply contain a value which you assign to them. They can either contain a string literal, or an unsigned integer. They can also contain characters, but they are effectively syntactic sugar for unsigned integers.
+`let` bindings are slightly different. They are your run-of-the-mill constants which simply contain a value which you assign to them. They can either contain a string literal, a double, or an unsigned integer. They can also contain characters, but they are effectively syntactic sugar for unsigned integers.
 
 ### Declaration:
 
@@ -159,6 +185,32 @@ method main {
 }
 ```
 > Please note: Buffers have no overflow checking, and so writing a 32-bit value to a 1-byte-large buffer will succeed with no error, and overwrite any subsequent memory beyond the allocated limit.
+
+## Boolean Operators
+
+A language needs boolean operators to be turing complete, so here are the choices available in VML:
+
+|Operator | Function|
+|-|-|
+|`>`| `pop a, b`, `a > b: 1`, `b >= a: 0`
+|`<`| `pop a, b`, `a < b: 1`, `b <= a: 0`
+|`=`| `pop a, b`, `a == b: 1`, `b != a: 0`
+|`!=`| `pop a, b`, `a != b: 1`, `b == a: 0`
+`str=`|Pops two string literals off of the stack. If they are equal, then a 1 is pushed to the stack. Otherwise, a 0 is pushed.
+`str!=`| Pops two string literals off of the stack. If they are equal, then a 0 is pushed to the stack. Otherwise, a 1 is pushed.
+|`d>`| `pop a, b`, `a > b: 1`, `b >= a: 0`
+|`d<`| `pop a, b`, `a < b: 1`, `b <= a: 0`
+|`d=`| `pop a, b`, `a == b: 1`, `b != a: 0`
+|`d!=`| `pop a, b`, `a != b: 1`, `b == a: 0`
+
+## Doubles
+Finally! We can do more complex calculations!
+
+To declare a double (decimal value), simply stick a `.0` on any unsigned integer. For more specific values, you may use the `wholenumber.decimal` syntax. Here is an example:
+```
+let 3.141592653 const PI
+```
+Doubles require specific boolean operators in certain scenarios, usually prefixed with a `d`, so the double version of `>` becomes `d>`. If you wish to see more on boolean operators, read [this](#boolean-operators).
 
 ## Miscellaneous
 

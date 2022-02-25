@@ -51,6 +51,8 @@ can be found below:
 |0x16: NEG Rx                                 |
 |xx17: ICMP Rx, Rx                            |
 |xx18: DCMP Rx, Rx                            |
+|xx2F: POW Rx, Rx                             |
+|xx30: ROOT Rx, Rx                            |
 +---------------------------------------------+
 
 +---------- Section III - Jump ----------+

@@ -9,6 +9,7 @@ pub mod vml_cpu;
 pub mod assembler;
 pub mod token;
 pub mod variable;
+pub mod util;
 
 use crate::assembler::*;
 

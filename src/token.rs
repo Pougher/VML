@@ -5,6 +5,7 @@ pub enum TokenType {
     INSTRUCTION,
     LABEL,
     INTEGER,
+    DOUBLE,
     STRING,
     REGISTER,
     METHOD,

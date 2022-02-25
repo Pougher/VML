@@ -1,7 +1,9 @@
 use crate::token::*;
 use crate::errors::*;
 use crate::variable::*;
+use crate::util::*;
 
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -87,6 +89,52 @@ impl Lexer {
         return line_string;
     }
 
+    fn manage_includes(self: &Lexer, data_i: String) -> String {
+        let mut changes: usize = 1;
+        let mut data = format!("{}", data_i);
+        let mut new: String = String::new();
+        let mut include: bool = false;
+        let mut modified: bool = false;
+        let mut files: Vec<String> = Vec::new();
+
+        while changes != 0 {
+            changes = 0;
+            if data.contains("include") {
+                new = String::new();
+                for c in data.replace("\n", "\n ").split(" ") {
+                    if include {
+                        let modified_c = c.replace("\n", "");
+                        if !modified_c.contains("\"") || modified_c.matches("\"").count() < 2{
+                            format_errora("Filename must be surrounded in a pair of \"\" for include.".to_string());
+                            process::exit(1);
+                        }
+                        if !files.contains(&format!("{}", modified_c)) {
+                            let contents = fs::read_to_string(modified_c.replace("\"", "")).expect(&*format!("Unable to read file '{}'", modified_c.replace("\"", "")));
+                            new += &*contents;
+                            files.push(format!("{}", modified_c));
+                        }
+                        include = !include;
+                        continue;
+                    }
+                    if c == "include" {
+                        include = true;
+                        modified = true;
+                        changes = 1;
+                    } else if c.contains("include") {
+                        format_errora("Include must take the following form: `include \"<filename>\".".to_string());
+                        process::exit(1);
+                    }
+                    else {
+                        new += &*format!("{} ", c);
+                    }
+                }
+                data = new.clone();
+            }
+        }
+        if !modified { new = data_i.clone(); }
+        return new;
+    }
+
 
     pub fn lex_asm(self: &mut Lexer, file_data: String) {
         let mut default_bitlen: bool = false;
@@ -153,6 +201,8 @@ impl Lexer {
                     "bufc" => { self.add_token(TokenType::INSTRUCTION, "bufc"); self.expected = 1; },
                     "bseq" => { self.add_token(TokenType::INSTRUCTION, "bseq"); self.expected = 1; },
                     "lseq" => { self.add_token(TokenType::INSTRUCTION, "lseq"); self.expected = 1; },
+                    "pow" => { self.add_token(TokenType::INSTRUCTION, "pow"); self.expected = 1; },
+                    "root" => { self.add_token(TokenType::INSTRUCTION, "root"); self.expected = 1; },
                     //"externo" => self.add_token(TokenType::INSTRUCTION, "pop"),
                     "$" => { default_bitlen = true; self.toks = String::from(""); }
                     "U$" => { default_bitlen = false; self.toks = String::from(""); }
@@ -175,9 +225,10 @@ impl Lexer {
                 }
 
                 if (self.lexer_state & 0x08) != 0 {
-                    if self.toks == "e" {
+                    if self.toks == "e" || self.toks == "o" {
                         self.clear_state();
-                        self.toks = String::from("re");
+                        if self.toks == "e" { self.toks = String::from("re"); }
+                        else { self.toks = String::from("ro"); }
                     }
                     else {
                         if i != '\n' && i != ',' && i != '\t' && i != ' ' {
@@ -231,11 +282,12 @@ impl Lexer {
             }
             if i == '\n' {
                 mul_reg = false;
-                if self.expected != 0 { 
+                if self.expected != 0 {
                     format_errorl("Invalid operands for instruction".to_string(),
                                     line, 
                                     self.read_line_num(&file_data, line),
                     );
+                    println!("{}", self.expected);
                     process::exit(1);
                 }
                 if self.lexer_state == 1 {
@@ -313,6 +365,8 @@ impl Lexer {
                     "bufc" => file_vec.push(String::from("2c")),
                     "bseq" => file_vec.push(String::from("2d")),
                     "lseq" => file_vec.push(String::from("2e")),
+                    "pow" => file_vec.push(String::from("2f")),
+                    "root" => file_vec.push(String::from("30")),
                     _ => println!("Unimplemented instruction!")
                 },
                 TokenType::REGISTER => {
@@ -428,12 +482,15 @@ impl Lexer {
         return output_vec.len();
     }
 
-    pub fn lex_vml(self: &mut Lexer, file_data: String) {
+    pub fn lex_vml(self: &mut Lexer, file_data_pre: String) {
         let mut pass: bool = false;
         let mut variables: Vec<String> = Vec::new();
         let mut methods: Vec<String> = Vec::new();
         let mut line: usize = 0;
         let mut braces: i32 = 0;
+
+        // manage includes
+        let file_data: String = self.manage_includes(file_data_pre);
 
         for i in file_data.chars() {
             if i != '\n' && i != '\t' && i != ' ' { self.toks += &*format!("{}", i); }
@@ -535,6 +592,8 @@ impl Lexer {
                 match &*self.toks {
                     ">" => self.add_token(TokenType::INSTRUCTION, ">"),
                     "<" => self.add_token(TokenType::INSTRUCTION, "<"),
+                    "str=" => self.add_token(TokenType::INSTRUCTION, "strequals"),
+                    "str!=" => self.add_token(TokenType::INSTRUCTION, "strnequals"),
                     "if" => self.add_token(TokenType::INSTRUCTION, "if"),
                     "and" => self.add_token(TokenType::INSTRUCTION, "and"),
                     "or" => self.add_token(TokenType::INSTRUCTION, "or"),
@@ -542,6 +601,9 @@ impl Lexer {
                     "not" => self.add_token(TokenType::INSTRUCTION, "not"),
                     "=" => self.add_token(TokenType::INSTRUCTION, "equals"),
                     "!=" => self.add_token(TokenType::INSTRUCTION, "notequals"),
+                    "root" => self.add_token(TokenType::INSTRUCTION, "root"),
+                    "pow" => self.add_token(TokenType::INSTRUCTION, "pow"),
+                    "return" => self.add_token(TokenType::INSTRUCTION, "return"),
                     "*" => self.add_token(TokenType::INSTRUCTION, "mul"),
                     "}" => {
                         braces -= 1;
@@ -554,6 +616,16 @@ impl Lexer {
                     "-" => self.add_token(TokenType::INSTRUCTION, "sub"),
                     "+" => self.add_token(TokenType::INSTRUCTION, "add"),
                     "/" => self.lexer_state = 128,
+                    "d*" => self.add_token(TokenType::INSTRUCTION, "dmul"),
+                    "d-" => self.add_token(TokenType::INSTRUCTION, "dsub"),
+                    "d+" => self.add_token(TokenType::INSTRUCTION, "dadd"),
+                    "d/" => self.add_token(TokenType::INSTRUCTION, "ddiv"),
+                    "d>" => self.add_token(TokenType::INSTRUCTION, "d>"),
+                    "d<" => self.add_token(TokenType::INSTRUCTION, "d<"),
+                    "d=" => self.add_token(TokenType::INSTRUCTION, "d="),
+                    "d!=" => self.add_token(TokenType::INSTRUCTION, "d!="),
+                    "(uint)" => self.add_token(TokenType::INSTRUCTION, "cast_u64"),
+                    "(float)" => self.add_token(TokenType::INSTRUCTION, "cast_f64"),
                     "dup" => self.add_token(TokenType::INSTRUCTION, "dup"),
                     "swap" => self.add_token(TokenType::INSTRUCTION, "swap"),
                     "print" => self.add_token(TokenType::INSTRUCTION, "print"),
@@ -561,6 +633,8 @@ impl Lexer {
                     "hprint" => self.add_token(TokenType::INSTRUCTION, "hprint"),
                     "fprint" => self.add_token(TokenType::INSTRUCTION, "fprint"),
                     "bprint" => self.add_token(TokenType::INSTRUCTION, "bprint"),
+                    "dprint" => self.add_token(TokenType::INSTRUCTION, "dprint"),
+                    "iprint" => self.add_token(TokenType::INSTRUCTION, "iprint"),
                     "drop" => self.add_token(TokenType::INSTRUCTION, "drop"),
                     "rot" => self.add_token(TokenType::INSTRUCTION, "rot"),
                     "memory" => self.add_token(TokenType::INSTRUCTION, "mem"),
@@ -656,16 +730,29 @@ impl Lexer {
             } else if self.lexer_state == 2 && i != '\n' && i != '\t' && i != ' ' {
                 self.expr += &*format!("{}", i);
             } else if self.lexer_state == 2 {
-                let result = self.expr.parse::<u64>(); 
-                if !result.is_ok() {
-                    format_errorl("Unexpected character while parsing integer.".to_string(),
-                        line,
-                        self.read_line_num(&file_data, line-1)
-                    );
-                    process::exit(1);
+                if self.expr.contains(".") {
+                    let result = self.expr.parse::<f64>();
+                    if !result.is_ok() {
+                        format_errorl("Unexpected character while parsing integer.".to_string(),
+                            line,
+                            self.read_line_num(&file_data, line-1)
+                        );
+                        process::exit(1);
+                    }
+                    self.add_token(TokenType::DOUBLE, &*self.expr.clone());
+                    self.clear_state();
+                } else {
+                    let result = self.expr.parse::<u64>();
+                    if !result.is_ok() {
+                        format_errorl("Unexpected character while parsing integer.".to_string(),
+                            line,
+                            self.read_line_num(&file_data, line-1)
+                        );
+                        process::exit(1);
+                    }
+                    self.add_token(TokenType::INTEGER, &*self.expr.clone());
+                    self.clear_state();
                 }
-                self.add_token(TokenType::INTEGER, &*self.expr.clone());
-                self.clear_state();
             }
         }
         if !methods.contains(&("main".to_string())) {
@@ -679,7 +766,7 @@ impl Lexer {
     }
 
     pub fn tokens_to_assembly(self: &mut Lexer) -> String {
-        let mut output: String = String::from("; generated by VML compiler v0.0.0a\n\n.start:\n\t\tjmp \t.main\n");
+        let mut output: String = String::from("; generated by VML compiler v0.0.0a\n\n.start:\n\t\tjmp \t.end\n");
         let mut index: usize = 0;
         let mut stringmap: HashMap::<String, String> = HashMap::new();
         let mut loopmap_str: Vec<String> = Vec::new();
@@ -717,23 +804,36 @@ impl Lexer {
                             output += "\t\tneg\tr0\n";
                             output += "\t\tpush\tr0\n";
                         },
-                        "uprint" => {
-                            output += "\t\tsys \t0x00\n";
+                        "uprint" => output += "\t\tsys \t0x00\n",
+                        "print" => output += "\t\tsys \t0x01\n",
+                        "hprint" => output += "\t\tsys \t0x03\n",
+                        "bprint" => output += "\t\tsys \t0x04\n",
+                        "dprint" => output += "\t\tsys \t0x06\n",
+                        "fprint" => output += "\t\tsys \t0x02\n",
+                        "iprint" => output += "\t\tsys \t0x07\n",
+                        "input" => output += "\t\tsys \t0x05\n",
+                        "return" => output += "\t\tret\n",
+                        "pow" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tpow \tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
                         },
-                        "print" => {
-                            output += "\t\tsys \t0x01\n";
+                        "root" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\troot \tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
                         },
-                        "hprint" => {
-                            output += "\t\tsys \t0x03\n";
+                        "cast_f64" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\ticst\tr0\n";
+                            output += "\t\tpush\tr0\n";
                         },
-                        "bprint" => {
-                            output += "\t\tsys \t0x04\n";
-                        },
-                        "fprint" => {
-                            output += "\t\tsys \t0x02\n";
-                        },
-                        "input" => {
-                            output += "\t\tsys \t0x05\n";
+                        "cast_u64" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tdcst\tr0\n";
+                            output += "\t\tpush\tr0\n";
                         },
                         "add" => {
                             output += "\t\tpop \tr0\n";
@@ -757,6 +857,30 @@ impl Lexer {
                             output += "\t\tpop \tr1\n";
                             output += "\t\tpop \tr0\n";
                             output += "\t\tidiv\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "dadd" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tdadd\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "dsub" => {
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tdsub\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "dmul" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tdmul\tr0, r1\n";
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "ddiv" => {
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tddiv\tr0, r1\n";
                             output += "\t\tpush\tr0\n";
                         },
                         "dup" => {
@@ -796,44 +920,68 @@ impl Lexer {
                             output += "\t\tpush\tr0\n";
                             labelindex += 1;
                         },
+                        "d>" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tdcmp\tr0, r1\n";
+                            output += &*format!("\t\tblt \t.label{}\n", labelindex);
+                            output += "\t\tmov \tr0, $0x00\n";
+                            output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                            output += &*format!(".label{}:\n", labelindex);
+                            output += "\t\tmov \tr0, $0x01\n";
+                            output += &*format!(".label_join{}:\n", labelindex);
+                            output += "\t\tpush\tr0\n";
+                            labelindex += 1;
+                        },
+                        "d<" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tdcmp\tr0, r1\n";
+                            output += &*format!("\t\tbgt \t.label{}\n", labelindex);
+                            output += "\t\tmov \tr0, $0x00\n";
+                            output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                            output += &*format!(".label{}:\n", labelindex);
+                            output += "\t\tmov \tr0, $0x01\n";
+                            output += &*format!(".label_join{}:\n", labelindex);
+                            output += "\t\tpush\tr0\n";
+                            labelindex += 1;
+                        },
+                        "strequals" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tlseq\tr0, r1\n"; 
+                            output += &*format!("\t\tbeq \t.label{}\n", labelindex);
+                            output += "\t\tmov \tr0, $0x00\n";
+                            output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                            output += &*format!(".label{}:\n", labelindex);
+                            output += "\t\tmov \tr0, $0x01\n";
+                            output += &*format!(".label_join{}:\n", labelindex);
+                            output += "\t\tpush\tr0\n";
+                        },
+                        "strnequals" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tpop \tr1\n";
+                            output += "\t\tlseq\tr0, r1\n"; 
+                            output += &*format!("\t\tbne \t.label{}\n", labelindex);
+                            output += "\t\tmov \tr0, $0x00\n";
+                            output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                            output += &*format!(".label{}:\n", labelindex);
+                            output += "\t\tmov \tr0, $0x01\n";
+                            output += &*format!(".label_join{}:\n", labelindex);
+                            output += "\t\tpush\tr0\n";
+                        },
                         "equals" => {
                             if index >= 2 {
-                                if (self.tokens[index - 1].token_t == TokenType::VARIABLE || self.tokens[index - 2].token_t == TokenType::VARIABLE) && 
-                                    (self.tokens[index - 1].token_t == TokenType::STRING || self.tokens[index - 2].token_t == TokenType::STRING) {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\tlseq\tr0, r1\n"; 
-                                    output += &*format!("\t\tbeq \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                }
-                                else if self.tokens[index - 1].token_t == TokenType::STRING && self.tokens[index - 2].token_t == TokenType::STRING {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\tlseq\tr0, r1\n"; 
-                                    output += &*format!("\t\tbeq \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                } else {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\ticmp\tr0, r1\n"; 
-                                    output += &*format!("\t\tbeq \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                }
+                                output += "\t\tpop \tr0\n";
+                                output += "\t\tpop \tr1\n";
+                                output += "\t\ticmp\tr0, r1\n"; 
+                                output += &*format!("\t\tbeq \t.label{}\n", labelindex);
+                                output += "\t\tmov \tr0, $0x00\n";
+                                output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                                output += &*format!(".label{}:\n", labelindex);
+                                output += "\t\tmov \tr0, $0x01\n";
+                                output += &*format!(".label_join{}:\n", labelindex);
+                                output += "\t\tpush\tr0\n";
                                 labelindex += 1;
                             } else {
                                 format_errora("`=` expects two prior arguments. (eg. `1 1 =`).".to_string());
@@ -842,44 +990,57 @@ impl Lexer {
                         }
                         "notequals" => {
                             if index >= 2 {
-                                if (self.tokens[index - 1].token_t == TokenType::VARIABLE || self.tokens[index - 2].token_t == TokenType::VARIABLE) && 
-                                    (self.tokens[index - 1].token_t == TokenType::STRING || self.tokens[index - 2].token_t == TokenType::STRING) {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\tlseq\tr0, r1\n"; 
-                                    output += &*format!("\t\tbne \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                }
-                                else if self.tokens[index - 1].token_t == TokenType::STRING && self.tokens[index - 2].token_t == TokenType::STRING {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\tlseq\tr0, r1\n"; 
-                                    output += &*format!("\t\tbne \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                } else {
-                                    output += "\t\tpop \tr0\n";
-                                    output += "\t\tpop \tr1\n";
-                                    output += "\t\ticmp\tr0, r1\n"; 
-                                    output += &*format!("\t\tbne \t.label{}\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x00\n";
-                                    output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
-                                    output += &*format!(".label{}:\n", labelindex);
-                                    output += "\t\tmov \tr0, $0x01\n";
-                                    output += &*format!(".label_join{}:\n", labelindex);
-                                    output += "\t\tpush\tr0\n";
-                                }
+                                output += "\t\tpop \tr0\n";
+                                output += "\t\tpop \tr1\n";
+                                output += "\t\ticmp\tr0, r1\n"; 
+                                output += &*format!("\t\tbne \t.label{}\n", labelindex);
+                                output += "\t\tmov \tr0, $0x00\n";
+                                output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                                output += &*format!(".label{}:\n", labelindex);
+                                output += "\t\tmov \tr0, $0x01\n";
+                                output += &*format!(".label_join{}:\n", labelindex);
+                                output += "\t\tpush\tr0\n";
+                                labelindex += 1;
+                            }
+                            else {
+                                format_errora("`!=` expects two prior arguments. (eg. `1 2 !=`).".to_string());
+                                process::exit(1);
+                            }
+                            labelindex += 1;
+                        }
+                        "d=" => {
+                            if index >= 2 {
+                                output += "\t\tpop \tr0\n";
+                                output += "\t\tpop \tr1\n";
+                                output += "\t\tdcmp\tr0, r1\n"; 
+                                output += &*format!("\t\tbeq \t.label{}\n", labelindex);
+                                output += "\t\tmov \tr0, $0x00\n";
+                                output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                                output += &*format!(".label{}:\n", labelindex);
+                                output += "\t\tmov \tr0, $0x01\n";
+                                output += &*format!(".label_join{}:\n", labelindex);
+                                output += "\t\tpush\tr0\n";
                                 labelindex += 1;
                             } else {
+                                format_errora("`=` expects two prior arguments. (eg. `1 1 =`).".to_string());
+                                process::exit(1);
+                            }
+                        }
+                        "d!=" => {
+                            if index >= 2 {
+                                output += "\t\tpop \tr0\n";
+                                output += "\t\tpop \tr1\n";
+                                output += "\t\tdcmp\tr0, r1\n"; 
+                                output += &*format!("\t\tbne \t.label{}\n", labelindex);
+                                output += "\t\tmov \tr0, $0x00\n";
+                                output += &*format!("\t\tjmp \t.label_join{}\n", labelindex);
+                                output += &*format!(".label{}:\n", labelindex);
+                                output += "\t\tmov \tr0, $0x01\n";
+                                output += &*format!(".label_join{}:\n", labelindex);
+                                output += "\t\tpush\tr0\n";
+                                labelindex += 1;
+                            }
+                            else {
                                 format_errora("`!=` expects two prior arguments. (eg. `1 2 !=`).".to_string());
                                 process::exit(1);
                             }
@@ -1033,6 +1194,18 @@ impl Lexer {
                                         ));
                                         index += 2;
                                     }
+                                    else if self.tokens[index + 1].token_t == TokenType::DOUBLE {
+                                        varlist.push(Variable::new(
+                                            self.tokens[index + 2].data.clone(),
+                                            self.tokens[index + 1].data.clone(),
+                                            4
+                                        ));
+                                        index += 2;
+                                    }
+                                    else {
+                                        format_errora("Unexpected token whilst parsing `let` binding.".to_string());
+                                        process::exit(1);
+                                    }
                                 }
                             }
                         },
@@ -1059,6 +1232,11 @@ impl Lexer {
                 TokenType::CHAR => {
                     output += &*format!("\t\tadr \tr0, 0x{:x}\n", self.tokens[index].data.as_bytes()[0]);
                     output += "\t\tpush\tr0\n";
+                },
+                TokenType::DOUBLE => {
+                    let as_u64_val: u64 = to_u64(self.tokens[index].data.parse::<f64>().unwrap());
+                    output += &*format!("\t\tmov \tr0, $0x{:x}\n", as_u64_val);
+                    output += "\t\tpush\tr0\n";
                 }
                 TokenType::VARIABLE => {
                     // variable checking not required as it is done in the
@@ -1082,20 +1260,24 @@ impl Lexer {
                                 3 => {
                                     output += &*format!("\t\tadr \tr0, 0x{:x}\n", var.variable_data.as_bytes()[0]);
                                     output += "\t\tpush\tr0\n";
+                                },
+                                4 => {
+                                    output += &*format!("\t\tmov \tr0, $0x{:x}\n", to_u64(var.variable_data.parse::<f64>().unwrap()));
+                                    output += "\t\tpush\tr0\n";
                                 }
                                 _ => warninga("Unspecified variable type encountered while parsing.")
                             }
                         }
                     }
                 },
-                _ => ()
+                _ => warninga("Unknown token found while parsing")
             }
             index += 1;
         }
         // be sure to jump to the end of the file in order to avoid executing the program's
         // data as code.
 
-        output += "\t\tjmp \t.end\n";
+        output += "\t\tret\n";
 
         // add strings
         
@@ -1108,7 +1290,7 @@ impl Lexer {
                 output += &*format!(".{}: \"{}\"\n", var.variable_name, var.variable_data);
             }
         }
-        output += ".end:\n";
+        output += ".end: jsr .main\n";
         self.tokens = Vec::new();
         return output;
     }
