@@ -65,16 +65,10 @@ can be found below:
 |001F: RET                               |
 +----------------------------------------+
 
-(NOTE: `EXTERN` is used to call RUST to do an external call, for
-example, if the program wants the time, then it will call `EXTERNO`
-[extern output] with the memory address for the stored data at
-the second IMM64. Any operands must be registers pushed onto the
-stack before the call.)
-
 +---------- Section IV - Miscellaneous ----------+
 |0020: SYS IMM64                                 |
-|0021: EXTERNI IMM64, IMM64                      |
 |0022: HALT                                      |
+|0x31: CALL Rx                                   |
 +------------------------------------------------+
 
 === Flags register ===
