@@ -104,7 +104,7 @@ impl Lexer {
                 for c in data.replace("\n", "\n ").split(" ") {
                     if include {
                         let modified_c = c.replace("\n", "");
-                        let replaced_sm = c.replace("\"", "");
+                        let replaced_sm = modified_c.replace("\"", "");
                         if !modified_c.contains("\"") || modified_c.matches("\"").count() < 2{
                             format_errora("Filename must be surrounded in a pair of \"\" for include.".to_string());
                             process::exit(1);
