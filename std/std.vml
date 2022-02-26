@@ -1,0 +1,16 @@
+method std-printu { 0 syscall }
+method std-prints { 1 syscall }
+method std-printf { 2 syscall }
+method std-printh { 3 syscall }
+method std-printb { 4 syscall }
+method std-printd { 6 syscall }
+method std-printi { 7 syscall }
+
+method std-input { 5 syscall }
+
+let 8 const Sizeof(i64)
+let 4 const Sizeof(i32)
+let 2 const Sizeof(i16)
+let 1 const Sizeof(i8)
+let 8 const Sizeof(float)
+let 1 const Sizeof(char)

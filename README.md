@@ -2,6 +2,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/axolotlc/vml)
 ![GitHub all releases](https://img.shields.io/github/downloads/axolotlc/vml/total)
 ![GitHub repo size](https://img.shields.io/github/repo-size/axolotlc/vml)
+![GitHub](https://img.shields.io/github/license/axolotlc/vml)
 
 Not an esoteric programming language, just a bizzare one.
 
@@ -23,6 +24,7 @@ Not an esoteric programming language, just a bizzare one.
 - [Boolean Operators](#boolean-operators)
 - [Includes](#includes)
 - [Miscellaneous](#miscellaneous)
+- [Standard Library](#standard-library)
 
 ## Usage
 
@@ -33,8 +35,9 @@ Compiling a VML program is simple! Simply run `vml -c <filename>.vml`. This will
 Since this is a simple cargo project (make sure you have `rustc` and `cargo` installed), follow these steps:
 
 1) `cd` into the correct directory (the root of your VML folder)
-2) run `cargo build --release` (This builds the program)
-3) add `alias vml=/path/to/target/release/vml` to your .bashrc or .zshrc
+2) Run `cargo build --release` (This builds the program)
+3) Add `alias vml=/path/to/target/release/vml` to your .bashrc or .zshrc
+4) Be sure to also add the standard library (`std/*.vml`) to your $PATH
 4) Test the installation by running `vml` in a new terminal. If you get an error, well done! You can now begin programming!
 
 ## Basic syntax
@@ -57,16 +60,9 @@ With all that out of the way, here are all of the keywords as well as their oper
 | `if` | 1 |  Pops a value off of the stack, if the value is one, it executes the code within the curly braces otherwise, it ignores the code within the braces.
 | `while` | 1 | While the value on top of the stack is one, then the code within the curly braces is executed. Otherwise, the code is skipped and the program continues.
 | `method` | 0 | Declares the code within the curly braces as a function with the name specified after the `method` keyword. Eg. `method foo {...}` Methods can be called with the `$` character followed by their name. Eg. `$foo`
-| `print` | 1 | Prints the value on top of the stack to the standard output. The value must be a file pointer to a **string literal**, otherwise you may encounter undefined behaviour.
-| `uprint` | 1 | Prints the value on top of the stack to the standard output. The value must be an **unsigned 64-bit integer**. Otherwise, undefined behaviour may occur.
-| `hprint` | 1 | Prints the value on top of the stack (formatted as a hexadecimal integer) to the standard output. The value must be an **unsigned 64-bit integer**. Otherwise, undefined behaviour may occur.
-| `fprint` | 1 | Prints the value on top of the stack (formatted as a binary integer) to the standard output. The value must be an **unsigned 64-bit integer**. Otherwise, undefined behaviour may occur.
-| `bprint` | 1 | Prints the **string literal** contained within a **memory buffer** to the standard output (must be null-terminated).
-| `iprint` | 1 | Pops a **signed 64-bit integer** from the top of the stack and outputs it to the terminal.
-| `dprint` | 1 | Pops a **64-bit Floating point number** from the top of the stack and outputs it to the terminal.
 | `return` | 0 | Returns from the current method. If used in the `main` method, the program exits.
 | `(float)` | 1 | Casts the top value on the stack as a **64-bit float**
-| `(uint)` | 1 | Casts the top value on the stack as a **64-bit unsigned integer**
+| `(int)` | 1 | Casts the top value on the stack as a **64-bit integer**
 | `pow` | 2 | Pops the top two **64-bit floating point numbers** from the stack and performs an exponentiation. The result is then pushed back onto the stack.
 | `root` | 2 | Pops the top two **64-bit floating point numbers** from the stack and performs an nth-root on them. The result is then pushed back onto the stack.
 | `include` | 1 | Includes a file. If the file doesn't exist, then the compiler will crash.
@@ -77,8 +73,8 @@ With all that out of the way, here are all of the keywords as well as their oper
 | `memory` | 0 | Begins a buffer variable, which is automatically allocated an amount of memory that is requested by the programmer. For example: `memory 64 const Buffer` allocated 64 bytes to the variable `Buffer`
 | `const` | 0 | Currently the only type of variable. Begins the declaration of a constant variable.
 | `let` | 0 | Declares a non-memory variable which can be referenced throughout the program. Eg. `let "Hi" const hi_var`. Variables can be referenced anywhere throughout the program with just their name identifier (Eg. `hi_var print`).
-| `input` | 1 | Fills a buffer supplied beforehand with a read line of input from the user. Usage: `buffer input` ---> `buffer = "I'm a line of input!"`
 | `copy` | 2 | Fills the first operand (as an entry into memory) with a string literal supplied by the second element down in the stack. Eg: `"Hello" buffer copy` ---> `buffer = "Hello"`
+| `syscall` | x | Performs an internal system-call. Can take any amount of arguments. Do not use if you are inexperienced or do not understand the system-call numbering in this language (as it runs on a virtual machine, linux syscalls won't work).
 
 ## Includes
 
@@ -142,9 +138,9 @@ Variable names may not:
 
 ### About:
 
-Methods are VML's version of subroutines. To call a method, use `$` and then the method name. Methods also follow the default naming convention.
+Methods are VML's version of subroutines. To call a method, simply write the method name. Methods also follow the default naming convention.
 
-### Decleration:
+### Declaration:
 
 A method may be declared by doing the following:
 
@@ -156,7 +152,7 @@ method <method name> {
 // Somewhere else in the program
 
     ...
-    $<method name>
+    <method name>
     ...
 ```
 
@@ -212,6 +208,30 @@ let 3.141592653 const PI
 ```
 Doubles require specific boolean operators in certain scenarios, usually prefixed with a `d`, so the double version of `>` becomes `d>`. If you wish to see more on boolean operators, read [this](#boolean-operators).
 
+## Standard Library
+
+At the moment, the standard library is very limited, with only the following functions:
+- `std-printu`
+- `std-printi`
+- `std-printd`
+- `std-printb`
+- `std-printf`
+- `std-printh`
+- `std-input`
+
+These do the same as the original compiler-implemented functions.
+
+On top of this, there are also the new `Sizeof()` functions:
+- `Sizeof(i64)`
+- `Sizeof(i32)`
+- `Sizeof(i16)`
+- `Sizeof(i8)`
+- `Sizeof(char)`
+- `Sizeof(float)`
+- `Sizeof(ptr)`
+
+Not that they are any use because you can't use them inside of `memory` declarations yet :/
+
 ## Miscellaneous
 
 > Please note - there are no includes in VML as of now, and so your projects can only contain one file. VML also requires an installation of rust to compile.
@@ -219,3 +239,6 @@ Doubles require specific boolean operators in certain scenarios, usually prefixe
 Also, for those of you who like your low-level assembly programming, you can assemble files with the `-a` flag which will produce a single bin file which can be run with `-r <file>.bin`. For an instruction set reference, please use `spec.txt`.
 
 As of now the language is still incomplete, and will recieve updates in the near future. Expect more!
+
+## License
+This project is under the [MIT License](https://github.com/AxolotlC/VML/blob/main/LICENSE). Any contributions are also under the MIT License.

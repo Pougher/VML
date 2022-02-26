@@ -12,6 +12,14 @@ method EuclidDistance_2D {
     d+ 2.0 swap root
 }
 
+method sqrt {
+    2 swap root
+}
+
 method negative {
     0 swap 2 * -
+}
+
+method inverse_sqrt {
+    2.0 swap root 1.0 swap d/
 }

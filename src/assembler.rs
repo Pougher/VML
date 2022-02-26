@@ -104,12 +104,13 @@ impl Lexer {
                 for c in data.replace("\n", "\n ").split(" ") {
                     if include {
                         let modified_c = c.replace("\n", "");
+                        let replaced_sm = c.replace("\"", "");
                         if !modified_c.contains("\"") || modified_c.matches("\"").count() < 2{
                             format_errora("Filename must be surrounded in a pair of \"\" for include.".to_string());
                             process::exit(1);
                         }
                         if !files.contains(&format!("{}", modified_c)) {
-                            let contents = fs::read_to_string(modified_c.replace("\"", "")).expect(&*format!("Unable to read file '{}'", modified_c.replace("\"", "")));
+                            let contents = fs::read_to_string(replaced_sm.clone()).expect(&*format!("Unable to read file '{}'", replaced_sm));
                             new += &*contents;
                             files.push(format!("{}", modified_c));
                         }
@@ -121,7 +122,7 @@ impl Lexer {
                         modified = true;
                         changes = 1;
                     } else if c.contains("include") {
-                        format_errora("Include must take the following form: `include \"<filename>\".".to_string());
+                        format_errora("Include must take the following form: `include \"<filename>\"`.".to_string());
                         process::exit(1);
                     }
                     else {
@@ -203,6 +204,7 @@ impl Lexer {
                     "lseq" => { self.add_token(TokenType::INSTRUCTION, "lseq"); self.expected = 1; },
                     "pow" => { self.add_token(TokenType::INSTRUCTION, "pow"); self.expected = 1; },
                     "root" => { self.add_token(TokenType::INSTRUCTION, "root"); self.expected = 1; },
+                    "call" => { self.add_token(TokenType::INSTRUCTION, "call"); self.expected = 1; },
                     //"externo" => self.add_token(TokenType::INSTRUCTION, "pop"),
                     "$" => { default_bitlen = true; self.toks = String::from(""); }
                     "U$" => { default_bitlen = false; self.toks = String::from(""); }
@@ -367,6 +369,7 @@ impl Lexer {
                     "lseq" => file_vec.push(String::from("2e")),
                     "pow" => file_vec.push(String::from("2f")),
                     "root" => file_vec.push(String::from("30")),
+                    "call" => file_vec.push(String::from("31")),
                     _ => println!("Unimplemented instruction!")
                 },
                 TokenType::REGISTER => {
@@ -495,7 +498,7 @@ impl Lexer {
         for i in file_data.chars() {
             if i != '\n' && i != '\t' && i != ' ' { self.toks += &*format!("{}", i); }
             if i == '\n' {
-                if self.toks != "".to_string() && self.lexer_state == 0 && !variables.contains(&self.toks) {
+                if self.toks != "".to_string() && self.lexer_state == 0 && !variables.contains(&self.toks) && !methods.contains(&self.toks) {
                     format_errorl("Syntax error".to_string(), line, self.read_line_num(&file_data, line));
                     process::exit(1);
                 }
@@ -588,6 +591,17 @@ impl Lexer {
                 }
             }
 
+            if self.lexer_state == 1024 {
+                if i.is_numeric() {
+                    self.expr = String::from("-");
+                    self.clear_state();
+                    self.set_int_bit();
+                } else {
+                    self.add_token(TokenType::INSTRUCTION, "sub");
+                    self.clear_state();
+                }
+            }
+
             if self.lexer_state == 0 {
                 match &*self.toks {
                     ">" => self.add_token(TokenType::INSTRUCTION, ">"),
@@ -613,7 +627,7 @@ impl Lexer {
                         braces += 1;
                         self.add_token(TokenType::INSTRUCTION, "rbrace")
                     }
-                    "-" => self.add_token(TokenType::INSTRUCTION, "sub"),
+                    "-" => self.lexer_state = 1024,
                     "+" => self.add_token(TokenType::INSTRUCTION, "add"),
                     "/" => self.lexer_state = 128,
                     "d*" => self.add_token(TokenType::INSTRUCTION, "dmul"),
@@ -624,27 +638,20 @@ impl Lexer {
                     "d<" => self.add_token(TokenType::INSTRUCTION, "d<"),
                     "d=" => self.add_token(TokenType::INSTRUCTION, "d="),
                     "d!=" => self.add_token(TokenType::INSTRUCTION, "d!="),
-                    "(uint)" => self.add_token(TokenType::INSTRUCTION, "cast_u64"),
+                    "(int)" => self.add_token(TokenType::INSTRUCTION, "cast_i64"),
                     "(float)" => self.add_token(TokenType::INSTRUCTION, "cast_f64"),
                     "dup" => self.add_token(TokenType::INSTRUCTION, "dup"),
                     "swap" => self.add_token(TokenType::INSTRUCTION, "swap"),
-                    "print" => self.add_token(TokenType::INSTRUCTION, "print"),
-                    "uprint" => self.add_token(TokenType::INSTRUCTION, "uprint"),
-                    "hprint" => self.add_token(TokenType::INSTRUCTION, "hprint"),
-                    "fprint" => self.add_token(TokenType::INSTRUCTION, "fprint"),
-                    "bprint" => self.add_token(TokenType::INSTRUCTION, "bprint"),
-                    "dprint" => self.add_token(TokenType::INSTRUCTION, "dprint"),
-                    "iprint" => self.add_token(TokenType::INSTRUCTION, "iprint"),
                     "drop" => self.add_token(TokenType::INSTRUCTION, "drop"),
                     "rot" => self.add_token(TokenType::INSTRUCTION, "rot"),
                     "memory" => self.add_token(TokenType::INSTRUCTION, "mem"),
+                    "syscall" => self.add_token(TokenType::INSTRUCTION, "syscall"),
                     "let" => self.add_token(TokenType::INSTRUCTION, "let"),
                     "const" => { self.set_variable_bit(); self.expr = String::from(""); pass = true; }
                     "\"" => { self.set_string_bit(); self.expr = String::from(""); }
                     "method" => {
                         self.set_method_bit(); self.expr = String::from(""); pass = true;
                     }
-                    "$" => { self.set_label_bit(); self.expr = String::from(""); }
                     "!32" => self.add_token(TokenType::INSTRUCTION, "store32"),
                     "!64" => self.add_token(TokenType::INSTRUCTION, "store64"),
                     "!16" => self.add_token(TokenType::INSTRUCTION, "store16"),
@@ -653,7 +660,7 @@ impl Lexer {
                     "@64" => self.add_token(TokenType::INSTRUCTION, "load64"),
                     "@16" => self.add_token(TokenType::INSTRUCTION, "load16"),
                     "@8" => self.add_token(TokenType::INSTRUCTION, "load8"),
-                    "input" => self.add_token(TokenType::INSTRUCTION, "input"),
+                    //"input" => self.add_token(TokenType::INSTRUCTION, "input"),
                     "copy" => self.add_token(TokenType::INSTRUCTION, "copy"),
                     "'" => { self.lexer_state = 512; self.expr = String::from(""); },
                     _ => {
@@ -662,24 +669,12 @@ impl Lexer {
                                 self.add_token(TokenType::VARIABLE, &*self.toks.clone());
                                 self.toks = String::from("");
                             }
+                            if methods.contains(&self.toks) {
+                                self.add_token(TokenType::LABEL, &*self.toks.clone());
+                                self.toks = String::from("");
+                            }
                         }
                     }
-                }
-            }
-
-            if self.lexer_state == 4 {
-                if i != ' ' && i != '\t' && i != '\n' {
-                    if i != '$' { self.expr += &*format!("{}", i); }
-                } else {
-                    if !methods.contains(&self.expr) {
-                        format_errorl(format!("Method '{}' does not exist.", self.expr),
-                            line,
-                            self.read_line_num(&file_data, line-1)
-                        );
-                        process::exit(1);
-                    }
-                    self.clear_state();
-                    self.add_token(TokenType::LABEL, &*self.expr.clone());
                 }
             }
 
@@ -744,14 +739,21 @@ impl Lexer {
                 } else {
                     let result = self.expr.parse::<u64>();
                     if !result.is_ok() {
-                        format_errorl("Unexpected character while parsing integer.".to_string(),
-                            line,
-                            self.read_line_num(&file_data, line-1)
-                        );
-                        process::exit(1);
+                        let result = self.expr.parse::<i64>();
+                        if !result.is_ok() {
+                            format_errorl("Unexpected character while parsing integer.".to_string(),
+                                line,
+                                self.read_line_num(&file_data, line-1)
+                            );
+                            process::exit(1);
+                        } else {
+                            self.add_token(TokenType::INTEGER, &*i64_bits(result.unwrap()).to_string());
+                            self.clear_state();
+                        }
+                    } else {
+                        self.add_token(TokenType::INTEGER, &*self.expr.clone());
+                        self.clear_state();
                     }
-                    self.add_token(TokenType::INTEGER, &*self.expr.clone());
-                    self.clear_state();
                 }
             }
         }
@@ -804,14 +806,10 @@ impl Lexer {
                             output += "\t\tneg\tr0\n";
                             output += "\t\tpush\tr0\n";
                         },
-                        "uprint" => output += "\t\tsys \t0x00\n",
-                        "print" => output += "\t\tsys \t0x01\n",
-                        "hprint" => output += "\t\tsys \t0x03\n",
-                        "bprint" => output += "\t\tsys \t0x04\n",
-                        "dprint" => output += "\t\tsys \t0x06\n",
-                        "fprint" => output += "\t\tsys \t0x02\n",
-                        "iprint" => output += "\t\tsys \t0x07\n",
-                        "input" => output += "\t\tsys \t0x05\n",
+                        "syscall" => {
+                            output += "\t\tpop \tr0\n";
+                            output += "\t\tcall\tr0\n";
+                        },
                         "return" => output += "\t\tret\n",
                         "pow" => {
                             output += "\t\tpop \tr0\n";
@@ -830,7 +828,7 @@ impl Lexer {
                             output += "\t\ticst\tr0\n";
                             output += "\t\tpush\tr0\n";
                         },
-                        "cast_u64" => {
+                        "cast_i64" => {
                             output += "\t\tpop \tr0\n";
                             output += "\t\tdcst\tr0\n";
                             output += "\t\tpush\tr0\n";

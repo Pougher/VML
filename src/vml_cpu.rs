@@ -144,7 +144,7 @@ impl VMLCpu {
                     self.registers[(args & 0x0F) as usize] = to_u64(to_f64(self.registers[(args & 0x0F) as usize]));
                 },
                 0x11 => {
-                    self.registers[(args & 0x0F) as usize] = to_f64(self.registers[(args & 0x0F) as usize]) as u64;
+                    self.registers[(args & 0x0F) as usize] = i64_bits(to_f64(self.registers[(args & 0x0F) as usize]) as i64);
                 },
                 0x12 => {
                     self.registers[(args & 0x0F) as usize] = self.registers[(args & 0x0F) as usize] << self.registers[((args & 0xF0) >> 4) as usize];
@@ -225,34 +225,7 @@ impl VMLCpu {
                     jump_amnt = 0;
                 },
                 0x20 => {
-                    match &self.read_usize(self.pc + 2, rom) {
-                        0x00 => print!("{}", self.stack.pop().unwrap()),
-                        0x01 => {
-                            let addr: usize = self.stack.pop().unwrap() as usize;
-                            print!("{}", self.read_NTString(addr, rom));
-                        },
-                        0x02 => print!("{:#064b}", self.stack.pop().unwrap()),
-                        0x03 => print!("{:#018x}", self.stack.pop().unwrap()),
-                        0x04 => {
-                            let addr: usize = self.stack.pop().unwrap() as usize;
-                            print!("{}", self.read_buffered_NTString(addr));
-                        },
-                        0x05 => {
-                            let buffer: usize = self.stack.pop().unwrap() as usize;
-                            let mut input: String = String::new();
-                            std::io::stdin().read_line(&mut input).unwrap();
-                            for i in 0..input.len()-1 {
-                                self.memory[buffer + i] = input.as_bytes()[i];
-                            }
-                            self.memory[buffer + input.len()] = 0x00;
-                        },
-                        0x06 => print!("{}", to_f64(self.stack.pop().unwrap())),
-                        0x07 => print!("{}", self.stack.pop().unwrap() as i64),
-                        _    => {
-                            format_errora("Error - unrecognized SYSCALL. Perhaps you're missing an extension?".to_string());
-                            process::exit(1);
-                        }
-                    }
+                    self.handle_syscalls(self.read_usize(self.pc + 2, rom), rom);
                     self.pc += 4;
                 },
                 0x22 => {
@@ -339,7 +312,10 @@ impl VMLCpu {
                     let op1 = to_f64(self.registers[(args & 0x0F) as usize]);
                     let op2 = to_f64(self.registers[((args & 0xF0) >> 4) as usize]);
                     self.registers[(args & 0x0F) as usize] = to_u64(op1.powf(1.0 / op2));
-                }
+                },
+                0x31 => {
+                    self.handle_syscalls(self.registers[(args & 0x0F) as usize] as usize, rom);
+                },
                 _ => eprintln!("Unrecognized opcode at {:#018x} (ERR)", self.pc)
             }
             self.pc += jump_amnt;
@@ -361,5 +337,36 @@ impl VMLCpu {
         }
         println!();
 */        
-    } 
+    }
+
+    fn handle_syscalls(self: &mut VMLCpu, syscall: usize, rom: &Vec<u8>) {
+        match &syscall {
+            0x00 => print!("{}", self.stack.pop().unwrap()),
+            0x01 => {
+                let addr: usize = self.stack.pop().unwrap() as usize;
+                print!("{}", self.read_NTString(addr, rom));
+            },
+            0x02 => print!("{:#064b}", self.stack.pop().unwrap()),
+            0x03 => print!("{:#018x}", self.stack.pop().unwrap()),
+            0x04 => {
+                let addr: usize = self.stack.pop().unwrap() as usize;
+                print!("{}", self.read_buffered_NTString(addr));
+            },
+            0x05 => {
+                let buffer: usize = self.stack.pop().unwrap() as usize;
+                let mut input: String = String::new();
+                std::io::stdin().read_line(&mut input).unwrap();
+                for i in 0..input.len()-1 {
+                    self.memory[buffer + i] = input.as_bytes()[i];
+                }
+                self.memory[buffer + input.len()] = 0x00;
+            },
+            0x06 => print!("{}", to_f64(self.stack.pop().unwrap())),
+            0x07 => print!("{}", self.stack.pop().unwrap() as i64),
+            _    => {
+                format_errora("Error - unrecognized SYSCALL. Perhaps you're missing an extension?".to_string());
+                process::exit(1);
+            }
+        }
+    }
 }
