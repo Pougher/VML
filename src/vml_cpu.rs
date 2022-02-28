@@ -1,4 +1,6 @@
+use std::fs;
 use std::process;
+
 use crate::errors::*;
 use crate::util::*;
 
@@ -9,7 +11,7 @@ pub static ASCII: [&'static str; 128] = [ "\x00", "\x01", "\x02", "\x03", "\x04"
 pub struct VMLCpu {
     registers: Vec<u64>,
     return_stack: Vec<usize>,
-    memory: [u8; 131072],
+    memory: Vec<u8>,
     stack: Vec<u64>,
     pc: usize,
     flags: u8
@@ -19,7 +21,7 @@ impl VMLCpu {
     pub fn new() -> Self {
         return VMLCpu {
             registers: vec![0; 16],
-            memory: [0; 131072],
+            memory: vec![0; 134217728],
             stack: Vec::new(),
             return_stack: Vec::new(),
             pc: 0,
@@ -96,14 +98,14 @@ impl VMLCpu {
                         ((args & 0xF0) >> 4) as usize];
                 },
                 0x04 => {
-                    self.memory[self.read_usize(self.pc + 2, rom)] = (self.registers[(
+                    let mem = self.read_usize(self.pc + 2, rom);
+                    self.memory[mem] = (self.registers[(
                         args & 0x0F) as usize] & 0xFF) as u8;
                     self.pc += 4;
                 },
                 0x05 => {
-                    self.memory[
-                        self.read_usize(self.pc + 2, rom) + self.registers[
-                            ((args & 0xF0) >> 4) as usize] as usize] = (self.registers[(args & 0x0F) as usize] & 0xFF) as u8;
+                    let mem = self.read_usize(self.pc + 2, rom) + self.registers[((args & 0xf0) >> 4) as usize] as usize;
+                    self.memory[mem] = (self.registers[(args & 0x0F) as usize] & 0xFF) as u8;
                     self.pc += 4;
                 },
                 0x06 => {
@@ -363,6 +365,39 @@ impl VMLCpu {
             },
             0x06 => print!("{}", to_f64(self.stack.pop().unwrap())),
             0x07 => print!("{}", self.stack.pop().unwrap() as i64),
+            0x08 => {
+                let file_addr = self.stack.pop();
+                let buffer = self.stack.pop();
+                let context = self.stack.pop();
+
+                let mut filename: String = String::new();
+                match &context.unwrap() {
+                    0 => filename = self.read_NTString(file_addr.unwrap() as usize, rom),
+                    1 => filename = self.read_buffered_NTString(file_addr.unwrap() as usize),
+                    _ => eprintln!("Unknown FileBuffer read type: {}.", context.unwrap()),
+                }
+
+                let filecontents = fs::read_to_string(filename).expect("Failed to read file.");
+                let filec_buf = filecontents.as_bytes();
+                for i in 0..filec_buf.len() {
+                    self.memory[(buffer.unwrap() as usize) + i] = filec_buf[i];
+                }
+            },
+            0x09 => {
+                let file_addr = self.stack.pop();
+                let buffer = self.stack.pop();
+                let context = self.stack.pop();
+                
+                let mut filename: String = String::new();
+                match &context.unwrap() {
+                    0 => filename = self.read_NTString(file_addr.unwrap() as usize, rom),
+                    1 => filename = self.read_buffered_NTString(file_addr.unwrap() as usize),
+                    _ => eprintln!("Unknown FileBuffer write type: {}.", context.unwrap()),
+                }
+
+                fs::write(filename, &*self.read_buffered_NTString(buffer.unwrap() as usize))
+                    .expect("Unable to write to file!");
+            },
             _    => {
                 format_errora("Error - unrecognized SYSCALL. Perhaps you're missing an extension?".to_string());
                 process::exit(1);

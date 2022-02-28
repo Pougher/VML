@@ -1,3 +1,4 @@
+// IO Subsection I
 method std-printu { 0 syscall }
 method std-prints { 1 syscall }
 method std-printf { 2 syscall }
@@ -5,8 +6,15 @@ method std-printh { 3 syscall }
 method std-printb { 4 syscall }
 method std-printd { 6 syscall }
 method std-printi { 7 syscall }
+method std-file-read {
+    0 rot 8 syscall
+}
 
+// IO Subsection II
 method std-input { 5 syscall }
+method std-file-write {
+    0 swap 9 syscall
+}
 
 let 8 const Sizeof(i64)
 let 4 const Sizeof(i32)
