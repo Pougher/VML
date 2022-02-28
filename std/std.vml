@@ -7,7 +7,7 @@ method std-printb { 4 syscall }
 method std-printd { 6 syscall }
 method std-printi { 7 syscall }
 method std-file-read {
-    0 rot 8 syscall
+    0 swap 8 syscall
 }
 
 // IO Subsection II
