@@ -1,4 +1,5 @@
 # VML - Virtual Machine Language
+### No longer being maintained, this language is a joke language and is really poorly written. Dont actually use it (not like anyone would anyway)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/axolotlc/vml)
 ![GitHub all releases](https://img.shields.io/github/downloads/axolotlc/vml/total)
 ![GitHub repo size](https://img.shields.io/github/repo-size/axolotlc/vml)
